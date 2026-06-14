@@ -192,6 +192,19 @@ function buildAvatarSparkleHTML(size) {
   return s + "</div>";
 }
 
+function buildSceneImageCSS(scene) {
+  if (!scene.backgroundImage) return "";
+
+  const fitMap = {
+    cover: "cover",
+    contain: "contain",
+    stretch: "100% 100%",
+  };
+  const size = fitMap[scene.backgroundFit] || "cover";
+
+  return `.scene::before{content:"";position:absolute;inset:0;background-image:url("${scene.backgroundImage}");background-size:${size};background-position:center;background-repeat:no-repeat;z-index:0}`;
+}
+
 // ========================================================
 //  CUSTOM TEXTS
 // ========================================================
@@ -255,7 +268,8 @@ export async function generateHtml(config, outPath) {
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:${config.width}px;height:${config.height}px;overflow:hidden;font-family:"Noto Sans SC","Microsoft YaHei",sans-serif}
 
-.scene{width:${config.width}px;height:${config.height}px;background:${scene.background};${bgEffect === "gradient-shift" ? "background-size:200% 200%;" : ""}display:flex;align-items:center;justify-content:center;position:relative;opacity:0;animation:bgFadeIn .6s ease-out ${timings.bgFadeIn}s forwards${bgEffect === "gradient-shift" ? `,gradShift 8s ease-in-out ${timings.bgFadeIn + 0.6}s infinite` : ""}}
+.scene{width:${config.width}px;height:${config.height}px;background:${scene.background};${bgEffect === "gradient-shift" ? "background-size:200% 200%;" : ""}display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;opacity:0;animation:bgFadeIn .6s ease-out ${timings.bgFadeIn}s forwards${bgEffect === "gradient-shift" ? `,gradShift 8s ease-in-out ${timings.bgFadeIn + 0.6}s infinite` : ""}}
+${buildSceneImageCSS(scene)}
 
 .grid-overlay{position:absolute;inset:0;background-image:linear-gradient(${scene.gridColor} 1px,transparent 1px),linear-gradient(90deg,${scene.gridColor} 1px,transparent 1px);background-size:${scene.gridSize} ${scene.gridSize};z-index:0}
 

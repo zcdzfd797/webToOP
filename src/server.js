@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateHtml } from "./generator.js";
-import { captureFrames, encodeVideo } from "./htmlToVideo.js";
+import { captureAndEncodeVideo } from "./htmlToVideo.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -11,8 +11,57 @@ const ROOT = path.resolve(__dirname, "..");
 const app = express();
 app.use(express.json({ limit: "30mb" }));
 
+const jobs = new Map();
+
+function createJob(totalFrames = 0) {
+  const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const job = {
+    id,
+    ok: true,
+    status: "queued",
+    stage: "queued",
+    percent: 0,
+    currentFrame: 0,
+    totalFrames,
+    file: null,
+    error: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  jobs.set(id, job);
+  return job;
+}
+
+function updateJob(job, patch) {
+  Object.assign(job, patch, { updatedAt: Date.now() });
+}
+
+function serializeJob(job) {
+  if (!job) return null;
+  return {
+    ok: true,
+    jobId: job.id,
+    status: job.status,
+    stage: job.stage,
+    percent: job.percent,
+    currentFrame: job.currentFrame,
+    totalFrames: job.totalFrames,
+    file: job.file,
+    error: job.error,
+  };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, job] of jobs) {
+    if (now - job.updatedAt > 30 * 60 * 1000) jobs.delete(id);
+  }
+}, 5 * 60 * 1000).unref();
+
 // Serve editor static files
 app.use("/editor", express.static(path.join(__dirname, "editor")));
+
+app.get("/favicon.ico", (req, res) => res.status(204).end());
 
 // Default config endpoint
 app.get("/api/config", async (req, res) => {
@@ -38,61 +87,86 @@ app.post("/api/preview", async (req, res) => {
 
 // Generate video
 app.post("/api/generate", async (req, res) => {
+  const config = req.body;
+  const duration = config.duration || 4;
+  const fps = config.fps || 30;
+  const job = createJob(Math.round(duration * fps));
+
+  res.json({ ok: true, jobId: job.id });
+
   try {
-    const config = req.body;
     const tempHtml = path.join(ROOT, "output", `_edit_${Date.now()}.html`);
     const outputName = `video_${Date.now()}.mp4`;
     const outputPath = path.join(ROOT, "output", outputName);
 
+    updateJob(job, { status: "running", stage: "building", percent: 1, file: outputName });
     await generateHtml(config, tempHtml);
 
     const width = config.width || 1920;
     const height = config.height || 1080;
-    const duration = config.duration || 4;
-    const fps = config.fps || 30;
-    const framesDir = path.join(ROOT, "output", `_frames_${Date.now()}`);
 
     // Decode BGM data (base64) to a temp file if provided
     let audioPath = null;
     if (config.bgmData) {
+      updateJob(job, { stage: "audio", percent: 2 });
       const base64Data = config.bgmData.replace(/^data:audio\/[a-z0-9.+-]+;base64,/, "");
       const ext = (config.bgmData.match(/^data:audio\/([a-z0-9]+)/) || [])[1] || "mp3";
       audioPath = path.join(ROOT, "output", `_bgm_${Date.now()}.${ext}`);
       await fs.writeFile(audioPath, Buffer.from(base64Data, "base64"));
     }
 
-    await captureFrames({
+    await captureAndEncodeVideo({
       input: tempHtml,
-      framesDir,
-      duration,
-      fps,
-      width,
-      height,
-    });
-    await encodeVideo({
-      framesDir,
       output: outputPath,
+      duration,
       fps,
       width,
       height,
       audioPath,
       audioVolume: config.bgmVolume ?? 0.6,
       audioLoop: config.bgmLoop ?? false,
+      frameFormat: config.frameFormat || "jpeg",
+      jpegQuality: config.jpegQuality || 88,
+      videoPreset: config.videoPreset || "veryfast",
+      videoCrf: config.videoCrf || 23,
+      onProgress: (progress) => {
+        updateJob(job, {
+          status: progress.stage === "done" ? "done" : "running",
+          stage: progress.stage,
+          percent: progress.percent,
+          currentFrame: progress.currentFrame,
+          totalFrames: progress.totalFrames,
+        });
+      },
     });
 
     // Cleanup temp files
     await fs.unlink(tempHtml).catch(() => {});
     if (audioPath) await fs.unlink(audioPath).catch(() => {});
-    const files = await fs.readdir(framesDir).catch(() => []);
-    await Promise.all(
-      files.map((f) => fs.unlink(path.join(framesDir, f)).catch(() => {})),
-    );
-    await fs.rmdir(framesDir).catch(() => {});
 
-    res.json({ ok: true, file: outputName });
+    updateJob(job, {
+      status: "done",
+      stage: "done",
+      percent: 100,
+      currentFrame: job.totalFrames,
+      file: outputName,
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    updateJob(job, {
+      ok: false,
+      status: "error",
+      stage: "error",
+      error: err.message,
+    });
   }
+});
+
+app.get("/api/generate/:jobId", (req, res) => {
+  const job = jobs.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ ok: false, error: "Job not found" });
+  }
+  res.json(serializeJob(job));
 });
 
 // Download generated video

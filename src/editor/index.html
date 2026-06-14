@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>HTML to Video - 编辑器</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Patrick+Hand&display=swap');
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: "Microsoft YaHei", sans-serif; background:#1a1a2e; color:#e0e0e0; height:100vh; display:flex; flex-direction:column; }
 
@@ -59,6 +60,10 @@
   @keyframes spin { to { transform:rotate(360deg); } }
   .overlay-text { margin-top:20px; font-size:16px; color:#00e5ff; }
   .overlay-sub { margin-top:8px; font-size:13px; color:#888; }
+  .progress-wrap { width:min(420px,80%); margin-top:18px; display:none; }
+  .progress-track { height:18px; border-radius:4px; border:1px dashed #2a2a4a; background:#0d1b2a; overflow:hidden; }
+  .progress-fill { height:100%; width:0%; background:linear-gradient(90deg,#00e5ff,#00e676); transition:width .25s ease; }
+  .progress-meta { margin-top:8px; display:flex; justify-content:space-between; font-size:12px; color:#888; }
 
   /* Download link */
   .download-bar { margin-top:16px; display:none; }
@@ -82,6 +87,13 @@
   .upload-btn { display:inline-block; padding:8px 18px; border-radius:8px; background:linear-gradient(135deg,#2196f3,#00e5ff); color:#fff; font-size:14px; cursor:pointer; text-align:center; transition:all .2s; }
   .upload-btn:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,229,255,.3); }
   .avatar-upload.dragging .avatar-preview { border-color:#00e5ff; box-shadow:0 0 20px rgba(0,229,255,.4); }
+  .bg-image-upload { display:flex; gap:12px; align-items:stretch; margin-bottom:12px; }
+  .bg-image-preview { width:132px; height:74px; border-radius:8px; border:1px solid #2a2a4a; background:#0d1b2a; overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px; }
+  .bg-image-preview img { width:100%; height:100%; object-fit:cover; }
+  .bg-image-controls { flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
+  .bg-image-file { font-size:12px; color:#aaa; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bg-image-actions { display:flex; gap:8px; align-items:center; }
+  .bg-image-upload.dragging .bg-image-preview { border-color:#00e5ff; box-shadow:0 0 20px rgba(0,229,255,.28); }
 
   /* Drag layer for custom texts */
   .drag-layer { position:absolute; inset:0; z-index:20; pointer-events:none; }
@@ -121,14 +133,394 @@
   .bgm-volume-row .vol-val { font-size:12px; color:#00e5ff; min-width:32px; text-align:right; }
   audio { width:100%; height:36px; border-radius:6px; }
   .bgm-empty { font-size:13px; color:#666; padding:10px; text-align:center; background:#0d1b2a; border:1px dashed #2a2a4a; border-radius:6px; }
+
+  /* Pucoding-inspired paper workbench theme */
+  :root {
+    --paper:#f6f1e8;
+    --paper-2:#fffaf1;
+    --paper-3:#eee7da;
+    --ink:#1a1814;
+    --muted:#776f63;
+    --line:#1f1d19;
+    --dash:#cfc5b6;
+    --green:#2f8b57;
+    --green-dark:#17643a;
+    --green-soft:#e8f4ec;
+    --orange:#c9782d;
+    --orange-soft:#fff0dc;
+    --red:#c44938;
+  }
+
+  body {
+    font-family:"Comic Neue","Patrick Hand","Microsoft YaHei",sans-serif;
+    background:
+      linear-gradient(rgba(26,24,20,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26,24,20,.028) 1px, transparent 1px),
+      var(--paper);
+    background-size:28px 28px,28px 28px,auto;
+    color:var(--ink);
+    letter-spacing:0;
+  }
+
+  .topbar {
+    background:rgba(246,241,232,.96);
+    padding:10px 20px;
+    border-bottom:2px dashed var(--line);
+    box-shadow:none;
+    min-height:56px;
+  }
+  .topbar h1 {
+    color:var(--ink);
+    font-family:"Patrick Hand","Comic Neue","Microsoft YaHei",sans-serif;
+    font-size:24px;
+    letter-spacing:0;
+    gap:8px;
+  }
+  .topbar h1::before {
+    content:"P";
+    width:28px;
+    height:28px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border:2px solid var(--line);
+    border-radius:6px;
+    color:var(--green-dark);
+    background:var(--paper-2);
+    box-shadow:2px 2px 0 rgba(26,24,20,.18);
+    font-weight:700;
+  }
+  .topbar .badge {
+    background:var(--orange-soft);
+    color:var(--orange);
+    border:1px dashed var(--orange);
+    border-radius:3px;
+    padding:2px 8px;
+    font-family:"Comic Neue","Microsoft YaHei",sans-serif;
+  }
+  .topbar-actions {
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  #statusText {
+    color:var(--muted);
+    font-size:13px;
+    font-weight:700;
+  }
+
+  .btn,
+  .btn-sm,
+  .btn-danger,
+  .preset-btn,
+  .upload-btn {
+    border-radius:4px;
+    font-family:"Comic Neue","Microsoft YaHei",sans-serif;
+    letter-spacing:0;
+  }
+  .btn {
+    border:2px solid var(--line);
+    box-shadow:3px 3px 0 rgba(26,24,20,.16);
+  }
+  .btn-primary {
+    background:var(--ink);
+    color:#fffaf1;
+  }
+  .btn-primary:hover {
+    transform:translate(-1px,-1px);
+    box-shadow:5px 5px 0 rgba(201,120,45,.35);
+  }
+  .btn-primary:disabled {
+    opacity:.55;
+    background:#6f675d;
+    box-shadow:2px 2px 0 rgba(26,24,20,.12);
+  }
+  .btn-sm {
+    background:var(--paper-2);
+    color:var(--ink);
+    border:1px dashed var(--line);
+    box-shadow:2px 2px 0 rgba(26,24,20,.08);
+  }
+  .btn-sm:hover {
+    background:var(--green-soft);
+    color:var(--green-dark);
+    border-color:var(--green);
+    transform:translateY(-1px);
+  }
+  .btn-danger {
+    background:var(--orange-soft);
+    color:var(--red);
+    border:1px dashed var(--red);
+  }
+  .btn-danger:hover {
+    background:#ffe2d8;
+  }
+
+  .main {
+    background:transparent;
+  }
+  .panel-left {
+    width:470px;
+    min-width:470px;
+    background:rgba(255,250,241,.54);
+    border-right:2px dashed var(--line);
+    padding:18px;
+  }
+  .panel-right {
+    background:
+      repeating-linear-gradient(0deg, rgba(26,24,20,.03) 0 1px, transparent 1px 34px),
+      var(--paper);
+    padding:26px;
+  }
+
+  .section {
+    background:rgba(255,250,241,.7);
+    border:1px dashed var(--dash);
+    border-left:4px solid rgba(47,139,87,.55);
+    border-radius:6px;
+    padding:14px;
+    margin-bottom:16px;
+    box-shadow:2px 2px 0 rgba(26,24,20,.06);
+  }
+  .section-title {
+    color:var(--ink);
+    border-bottom:1px dashed var(--dash);
+    padding-bottom:8px;
+    font-size:15px;
+    font-weight:700;
+  }
+  .section-title::before {
+    content:"";
+    width:7px;
+    height:7px;
+    display:inline-block;
+    background:var(--green);
+    border:1px solid var(--line);
+    box-shadow:1px 1px 0 rgba(26,24,20,.18);
+  }
+  .field label,
+  .bgm-volume-row label {
+    color:var(--muted);
+    font-weight:700;
+  }
+  .field input[type="text"],
+  .field input[type="number"],
+  .field select,
+  .field textarea,
+  .config-row input,
+  .bg-image-controls select {
+    background:var(--paper-2);
+    color:var(--ink);
+    border:1px dashed var(--dash);
+    border-radius:4px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.65);
+  }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus,
+  .config-row input:focus,
+  .bg-image-controls select:focus {
+    outline:none;
+    border-color:var(--green);
+    box-shadow:0 0 0 3px rgba(47,139,87,.14);
+  }
+  .color-field input[type="color"] {
+    border:1px dashed var(--dash);
+    background:var(--paper-2);
+    border-radius:4px;
+  }
+
+  .preset-btns {
+    background:rgba(255,250,241,.52);
+    border:1px dashed var(--dash);
+    border-radius:6px;
+    padding:10px;
+  }
+  .preset-btn {
+    background:var(--paper-2);
+    color:var(--muted);
+    border:1px dashed var(--dash);
+  }
+  .preset-btn:hover {
+    color:var(--green-dark);
+    border-color:var(--green);
+    background:var(--green-soft);
+    transform:translateY(-1px);
+  }
+
+  .action-item,
+  .text-item,
+  .saved-item {
+    background:rgba(255,250,241,.78);
+    border:1px dashed var(--dash);
+    border-radius:6px;
+  }
+  .action-item:hover,
+  .text-item:hover,
+  .saved-item:hover {
+    border-color:var(--green);
+    box-shadow:2px 2px 0 rgba(47,139,87,.12);
+  }
+  .action-item .action-header span,
+  .saved-item .saved-name {
+    color:var(--muted);
+  }
+  .save-status {
+    color:var(--muted);
+  }
+  .save-status.saved {
+    color:var(--green-dark);
+  }
+
+  .avatar-preview,
+  .bg-image-preview {
+    background:var(--paper-2);
+    border:1px dashed var(--dash);
+    border-radius:6px;
+    color:var(--muted);
+  }
+  .avatar-preview {
+    border-radius:50%;
+  }
+  .upload-btn {
+    background:var(--green);
+    color:#fffaf1;
+    border:2px solid var(--line);
+    box-shadow:3px 3px 0 rgba(26,24,20,.16);
+  }
+  .upload-btn:hover {
+    transform:translate(-1px,-1px);
+    box-shadow:5px 5px 0 rgba(47,139,87,.18);
+  }
+  .avatar-upload.dragging .avatar-preview,
+  .bg-image-upload.dragging .bg-image-preview {
+    border-color:var(--green);
+    box-shadow:0 0 0 4px rgba(47,139,87,.14);
+  }
+  .bg-image-file,
+  .bgm-file-info .filename {
+    color:var(--muted);
+  }
+
+  .preview-wrapper {
+    background:var(--paper-2);
+    border:2px dashed var(--line);
+    border-radius:6px;
+    box-shadow:6px 6px 0 rgba(26,24,20,.12);
+  }
+  .preview-label,
+  .preview-dims {
+    background:rgba(255,250,241,.92);
+    border:1px dashed var(--line);
+    border-radius:3px;
+    color:var(--green-dark);
+    font-weight:700;
+  }
+  .preview-dims {
+    color:var(--muted);
+  }
+  .drag-item {
+    border-color:rgba(47,139,87,.75);
+    background:rgba(232,244,236,.82);
+    color:var(--green-dark);
+    border-radius:3px;
+  }
+  .drag-item:hover,
+  .drag-item.dragging {
+    background:rgba(232,244,236,.95);
+    border-color:var(--green);
+  }
+  .drag-item-num {
+    background:var(--green);
+    color:#fffaf1;
+    border:1px solid var(--line);
+  }
+
+  .overlay {
+    background:rgba(246,241,232,.95);
+    border:2px dashed var(--line);
+    border-radius:6px;
+  }
+  .spinner {
+    border-color:var(--paper-3);
+    border-top-color:var(--green);
+  }
+  .overlay-text {
+    color:var(--ink);
+    font-weight:700;
+  }
+  .overlay-sub {
+    color:var(--muted);
+  }
+  .progress-wrap {
+    display:block;
+  }
+  .progress-track {
+    background:var(--paper-2);
+    border:1px dashed var(--line);
+    border-radius:3px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.75);
+  }
+  .progress-fill {
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,.18) 0 6px, transparent 6px 12px),
+      var(--green);
+  }
+  .progress-meta {
+    color:var(--muted);
+    font-weight:700;
+  }
+  .download-bar {
+    background:rgba(255,250,241,.82);
+    border:1px dashed var(--dash);
+    border-radius:6px;
+    padding:10px;
+  }
+
+  .bgm-volume-row input[type="range"] {
+    accent-color:var(--green);
+  }
+  audio {
+    filter:saturate(.75);
+  }
+  ::-webkit-scrollbar-track {
+    background:var(--paper);
+  }
+  ::-webkit-scrollbar-thumb {
+    background:#c8bdad;
+    border-radius:3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background:#a99d8e;
+  }
+  @media (max-width: 980px) {
+    .main {
+      flex-direction:column;
+      overflow:auto;
+    }
+    .panel-left {
+      width:100%;
+      min-width:0;
+      max-height:none;
+      border-right:none;
+      border-bottom:2px dashed var(--line);
+    }
+    .panel-right {
+      min-height:520px;
+    }
+    .topbar {
+      flex-wrap:wrap;
+      gap:10px;
+    }
+  }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <h1>HTML to Video <span class="badge">1080p</span></h1>
-  <div style="display:flex; gap:10px; align-items:center;">
-    <span id="statusText" style="font-size:13px; color:#888;"></span>
+  <h1>Pucoding Studio <span class="badge">HTML to MP4</span></h1>
+  <div class="topbar-actions">
+    <span id="statusText"></span>
     <button class="btn btn-primary" id="generateBtn">生成 MP4</button>
   </div>
 </div>
@@ -188,6 +580,23 @@
     <!-- Scene -->
     <div class="section">
       <div class="section-title">背景设置</div>
+      <div class="bg-image-upload" id="bgImageUploadArea">
+        <div class="bg-image-preview" id="bgImagePreview">No image</div>
+        <div class="bg-image-controls">
+          <div class="bg-image-actions">
+            <label class="upload-btn" for="bgImageFile">选择背景图</label>
+            <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
+            <button class="btn-sm" id="clearBgImageBtn" type="button">清除</button>
+          </div>
+          <div class="bg-image-file" id="bgImageFileName">未选择</div>
+          <select id="cfg-bgImageFit">
+            <option value="cover">铺满裁切</option>
+            <option value="contain">完整显示</option>
+            <option value="stretch">拉伸填满</option>
+          </select>
+          <input type="hidden" id="cfg-bgImage" value="">
+        </div>
+      </div>
       <div class="field">
         <label>背景渐变 (CSS)</label>
         <textarea id="cfg-bg" rows="2">linear-gradient(135deg, #3a1c5e 0%, #5b2a8c 40%, #7b3fb5 70%, #4a2378 100%)</textarea>
@@ -369,6 +778,15 @@
         <div class="spinner"></div>
         <div class="overlay-text" id="overlayText">正在生成视频...</div>
         <div class="overlay-sub" id="overlaySub">请稍候</div>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-meta">
+            <span id="progressPercent">0%</span>
+            <span id="progressFrames">0 / 0 帧</span>
+          </div>
+        </div>
       </div>
     </div>
     <div class="download-bar" id="downloadBar">
@@ -450,6 +868,8 @@ function readForm() {
     height: parseInt(document.getElementById("cfg-height").value),
     scene: {
       background: document.getElementById("cfg-bg").value,
+      backgroundImage: document.getElementById("cfg-bgImage").value,
+      backgroundFit: document.getElementById("cfg-bgImageFit").value,
       glowColor: document.getElementById("cfg-glowColor").value,
       gridColor: document.getElementById("cfg-gridColor").value,
       gridSize: document.getElementById("cfg-gridSize").value,
@@ -480,10 +900,13 @@ function writeForm(config) {
   document.getElementById("cfg-width").value = config.width;
   document.getElementById("cfg-height").value = config.height;
   document.getElementById("cfg-bg").value = config.scene.background;
+  document.getElementById("cfg-bgImage").value = config.scene.backgroundImage || "";
+  document.getElementById("cfg-bgImageFit").value = config.scene.backgroundFit || "cover";
   document.getElementById("cfg-glowColor").value = config.scene.glowColor;
   document.getElementById("cfg-gridColor").value = config.scene.gridColor;
   document.getElementById("cfg-gridSize").value = config.scene.gridSize;
   document.getElementById("cfg-bgEffect").value = (config.scene.effect || "none");
+  updateBgImagePreview(config.scene.backgroundImage || "");
   document.getElementById("cfg-avatarSize").value = config.avatar.size;
   document.getElementById("cfg-avatarUrl").value = config.avatar.imageUrl || "";
   document.getElementById("cfg-avatarEffect").value = (config.avatar.effect || "none");
@@ -785,11 +1208,58 @@ function updatePreview() {
 }
 
 // ===== Generate =====
+const STAGE_LABELS = {
+  queued: "排队中",
+  building: "构建 HTML",
+  audio: "处理音频",
+  rendering: "渲染帧",
+  finalizing: "封装 MP4",
+  done: "生成完成",
+  error: "生成失败",
+};
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function updateProgressUI(progress) {
+  const percent = Math.max(0, Math.min(100, Math.round(progress.percent || 0)));
+  const current = progress.currentFrame || 0;
+  const total = progress.totalFrames || 0;
+  const stageLabel = STAGE_LABELS[progress.stage] || progress.stage || "处理中";
+
+  document.getElementById("progressFill").style.width = `${percent}%`;
+  document.getElementById("progressPercent").textContent = `${percent}%`;
+  document.getElementById("progressFrames").textContent = `${current} / ${total} 帧`;
+  document.getElementById("overlayText").textContent = stageLabel;
+  document.getElementById("overlaySub").textContent = total
+    ? `${stageLabel} · ${current}/${total} 帧`
+    : stageLabel;
+}
+
+async function waitForGenerateJob(jobId) {
+  while (true) {
+    const resp = await fetch(`/api/generate/${jobId}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) throw new Error(data.error || "查询生成进度失败");
+
+    updateProgressUI(data);
+
+    if (data.status === "done") return data;
+    if (data.status === "error") throw new Error(data.error || "生成失败");
+
+    await sleep(500);
+  }
+}
+
 document.getElementById("generateBtn").addEventListener("click", async () => {
   const btn = document.getElementById("generateBtn");
   const overlay = document.getElementById("overlay");
   const overlayText = document.getElementById("overlayText");
   const overlaySub = document.getElementById("overlaySub");
+  const progressFill = document.getElementById("progressFill");
+  const progressPercent = document.getElementById("progressPercent");
+  const progressFrames = document.getElementById("progressFrames");
   const config = readForm();
   config.bgmData = bgmData;
   config.bgmVolume = parseFloat(document.getElementById("cfg-bgmVolume").value);
@@ -797,9 +1267,12 @@ document.getElementById("generateBtn").addEventListener("click", async () => {
 
   btn.disabled = true;
   overlay.classList.add("show");
-  overlayText.textContent = "正在生成视频...";
   const totalFrames = Math.round(config.duration * config.fps);
-  overlaySub.textContent = `预计渲染 ${totalFrames} 帧，请耐心等待...`;
+  progressFill.style.width = "0%";
+  progressPercent.textContent = "0%";
+  progressFrames.textContent = `0 / ${totalFrames} 帧`;
+  overlayText.textContent = "启动生成任务";
+  overlaySub.textContent = `预计渲染 ${totalFrames} 帧`;
 
   try {
     const resp = await fetch("/api/generate", {
@@ -808,20 +1281,21 @@ document.getElementById("generateBtn").addEventListener("click", async () => {
       body: JSON.stringify(config),
     });
     const data = await resp.json();
+    if (!resp.ok || !data.ok) throw new Error(data.error || "启动生成失败");
 
-    if (data.ok) {
-      overlayText.textContent = "生成成功!";
-      overlaySub.textContent = `${config.width}x${config.height} · ${config.duration}s · ${config.fps}fps`;
+    const done = await waitForGenerateJob(data.jobId);
+    overlayText.textContent = "生成成功!";
+    overlaySub.textContent = `${config.width}x${config.height} · ${config.duration}s · ${config.fps}fps`;
+    progressFill.style.width = "100%";
+    progressPercent.textContent = "100%";
+    progressFrames.textContent = `${totalFrames} / ${totalFrames} 帧`;
 
-      const dl = document.getElementById("downloadLink");
-      dl.href = `/api/download/${data.file}`;
-      dl.download = data.file;
-      document.getElementById("downloadBar").classList.add("show");
+    const dl = document.getElementById("downloadLink");
+    dl.href = `/api/download/${done.file}`;
+    dl.download = done.file;
+    document.getElementById("downloadBar").classList.add("show");
 
-      setTimeout(() => overlay.classList.remove("show"), 1200);
-    } else {
-      throw new Error(data.error || "Unknown error");
-    }
+    setTimeout(() => overlay.classList.remove("show"), 1200);
   } catch (err) {
     overlayText.textContent = "生成失败";
     overlaySub.textContent = err.message;
@@ -857,6 +1331,80 @@ function hexToRgba(hex, alpha) {
   const b = parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},${alpha})`;
 }
+
+// ===== Background image upload =====
+function updateBgImagePreview(dataUrl, fileName = "") {
+  const preview = document.getElementById("bgImagePreview");
+  const name = document.getElementById("bgImageFileName");
+
+  if (dataUrl) {
+    preview.innerHTML = `<img src="${dataUrl}" alt="background">`;
+    name.textContent = fileName || "Background image selected";
+  } else {
+    preview.textContent = "No image";
+    name.textContent = "No image selected";
+  }
+}
+
+function compressImageFile(file, maxWidth, maxHeight, quality = 0.9) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read image"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width, maxHeight / img.height);
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleBgImageFile(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  const width = parseInt(document.getElementById("cfg-width").value) || 1920;
+  const height = parseInt(document.getElementById("cfg-height").value) || 1080;
+  const maxWidth = Math.max(width, height);
+  const maxHeight = Math.max(width, height);
+  const dataUrl = await compressImageFile(file, maxWidth, maxHeight);
+
+  document.getElementById("cfg-bgImage").value = dataUrl;
+  updateBgImagePreview(dataUrl, file.name);
+  debouncePreview();
+}
+
+document.getElementById("bgImageFile").addEventListener("change", (e) => {
+  handleBgImageFile(e.target.files[0]).catch((err) => alert(err.message));
+});
+
+document.getElementById("clearBgImageBtn").addEventListener("click", () => {
+  document.getElementById("cfg-bgImage").value = "";
+  document.getElementById("bgImageFile").value = "";
+  updateBgImagePreview("");
+  debouncePreview();
+});
+
+const bgImageDragArea = document.getElementById("bgImageUploadArea");
+bgImageDragArea.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  bgImageDragArea.classList.add("dragging");
+});
+bgImageDragArea.addEventListener("dragleave", () => bgImageDragArea.classList.remove("dragging"));
+bgImageDragArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  bgImageDragArea.classList.remove("dragging");
+  handleBgImageFile(e.dataTransfer.files[0]).catch((err) => alert(err.message));
+});
 
 // ===== Avatar upload =====
 function handleAvatarFile(file) {
@@ -1055,7 +1603,7 @@ document.getElementById("importFile").addEventListener("change", (e) => {
 // ===== Init =====
 ["cfg-duration","cfg-fps","cfg-width","cfg-height","cfg-bg","cfg-glowColor","cfg-gridColor",
 "cfg-gridSize","cfg-avatarSize","cfg-avatarUrl","cfg-titleText","cfg-titleSize","cfg-titleWeight",
-"cfg-titleColor","cfg-titleSpacing","cfg-bgEffect","cfg-avatarEffect"].forEach(id => {
+"cfg-titleColor","cfg-titleSpacing","cfg-bgEffect","cfg-bgImageFit","cfg-avatarEffect"].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener("input", debouncePreview);
 });

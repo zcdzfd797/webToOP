@@ -18,6 +18,10 @@ const { values } = parseArgs({
     audio: { type: "string", short: "a" },
     "audio-volume": { type: "string", default: "0.6" },
     "audio-loop": { type: "boolean", default: false },
+    "frame-format": { type: "string", default: "jpeg" },
+    "jpeg-quality": { type: "string", default: "88" },
+    "video-preset": { type: "string", default: "veryfast" },
+    "video-crf": { type: "string", default: "23" },
     "keep-frames": { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -46,7 +50,11 @@ Options:
   -a, --audio       Audio file path to mix as BGM
       --audio-volume  BGM volume 0-1 (default 0.6)
       --audio-loop    Loop BGM if shorter than video
-      --keep-frames Keep intermediate PNG frames
+      --frame-format  Intermediate frame format: jpeg|png (default jpeg)
+      --jpeg-quality  JPEG frame quality 0-100 (default 88)
+      --video-preset  libx264 preset (default veryfast; use medium for slower/high quality)
+      --video-crf     libx264 CRF (default 23; lower means larger/better)
+      --keep-frames Keep intermediate frames
   -h, --help        Show this help
 
 Config mode lets you customize: title, avatar, background colors,
@@ -100,6 +108,10 @@ async function runConfigMode() {
     audioPath: values.audio ? path.resolve(values.audio) : undefined,
     audioVolume: parseFloat(values["audio-volume"]),
     audioLoop: values["audio-loop"],
+    frameFormat: values["frame-format"],
+    jpegQuality: parseInt(values["jpeg-quality"], 10),
+    videoPreset: values["video-preset"],
+    videoCrf: values["video-crf"],
   });
 
   await fs.unlink(htmlPath).catch(() => {});
@@ -121,6 +133,10 @@ async function runInputMode() {
     audioPath: values.audio ? path.resolve(values.audio) : undefined,
     audioVolume: parseFloat(values["audio-volume"]),
     audioLoop: values["audio-loop"],
+    frameFormat: values["frame-format"],
+    jpegQuality: parseInt(values["jpeg-quality"], 10),
+    videoPreset: values["video-preset"],
+    videoCrf: values["video-crf"],
   });
 }
 

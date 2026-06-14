@@ -6,6 +6,8 @@
   "height": 1080,
   "scene": {
     "background": "linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 40%, #16213e 70%, #0f3460 100%)",
+    "backgroundImage": "",
+    "backgroundFit": "cover",
     "glowColor": "rgba(0,180,255,0.3)",
     "gridColor": "rgba(0,200,255,0.06)",
     "gridSize": "52px"
