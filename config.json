@@ -1,0 +1,55 @@
+{
+  "output": "output/video.mp4",
+  "duration": 4,
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "scene": {
+    "background": "linear-gradient(135deg, #3a1c5e 0%, #5b2a8c 40%, #7b3fb5 70%, #4a2378 100%)",
+    "glowColor": "rgba(160,90,255,0.35)",
+    "gridColor": "rgba(255,255,255,0.04)",
+    "gridSize": "48px",
+    "effect": "particles"
+  },
+  "avatar": {
+    "size": 280,
+    "image": "bird",
+    "imageUrl": "",
+    "effect": "ring-rotate"
+  },
+  "title": {
+    "text": "脑子暂存处",
+    "fontSize": "84px",
+    "fontWeight": 900,
+    "color": "#fff",
+    "letterSpacing": "4px"
+  },
+  "actions": [
+    {
+      "label": "点赞",
+      "icon": "like",
+      "activeColor": "#ff4081",
+      "delay": 2.3
+    },
+    {
+      "label": "投币",
+      "icon": "coin",
+      "activeColor": "#2196f3",
+      "delay": 2.7
+    },
+    {
+      "label": "收藏",
+      "icon": "star",
+      "activeColor": "#ffd700",
+      "delay": 3.1
+    }
+  ],
+  "texts": [],
+  "timings": {
+    "bgFadeIn": 0.1,
+    "avatarPopIn": 0.5,
+    "titleFadeUp": 1.0,
+    "iconAppearStart": 1.5,
+    "iconAppearStep": 0.2
+  }
+}
